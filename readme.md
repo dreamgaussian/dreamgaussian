@@ -1,8 +1,12 @@
-# Instant-Dream
+# DreamGaussian
 
 This repository contains the official implementation for [DreamGaussian: Generative Gaussian Splatting for Efficient 3D Content Creation]().
 
 ### [Project Page](https://dreamgaussian3d.github.io) | [Arxiv]()
+
+
+https://github.com/dreamgaussian/dreamgaussian/assets/25863658/5be038f6-4339-4405-bb33-813fa20e8b39
+
 
 ## Install
 ```bash
