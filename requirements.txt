@@ -1,0 +1,36 @@
+tqdm
+rich
+ninja
+numpy
+pandas
+scipy
+scikit-learn
+matplotlib
+opencv-python
+imageio
+imageio-ffmpeg
+
+torch
+torch-ema
+einops
+tensorboard
+tensorboardX
+
+plyfile
+
+# for gui
+dearpygui
+
+# for stable-diffusion
+huggingface_hub
+diffusers >= 0.9.0
+accelerate
+transformers
+
+# for dmtet and mesh export
+xatlas
+trimesh
+PyMCubes
+pymeshlab
+
+rembg[gpu,cli]
