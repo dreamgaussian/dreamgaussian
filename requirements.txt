@@ -9,13 +9,10 @@ matplotlib
 opencv-python
 imageio
 imageio-ffmpeg
+omegaconf
 
 torch
-torch-ema
 einops
-tensorboard
-tensorboardX
-
 plyfile
 
 # for gui
