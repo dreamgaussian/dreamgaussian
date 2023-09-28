@@ -5,7 +5,7 @@ This repository contains the official implementation for [DreamGaussian: Generat
 ### [Project Page](https://dreamgaussian.github.io) | [Arxiv]()
 
 
-https://github.com/dreamgaussian/dreamgaussian/assets/25863658/5be038f6-4339-4405-bb33-813fa20e8b39
+https://github.com/dreamgaussian/dreamgaussian/assets/25863658/db860801-7b9c-4b30-9eb9-87330175f5c8
 
 
 ## Install
