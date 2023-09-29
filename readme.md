@@ -1,8 +1,8 @@
 # DreamGaussian
 
-This repository contains the official implementation for [DreamGaussian: Generative Gaussian Splatting for Efficient 3D Content Creation]().
+This repository contains the official implementation for [DreamGaussian: Generative Gaussian Splatting for Efficient 3D Content Creation](https://arxiv.org/abs/2309.16653).
 
-### [Project Page](https://dreamgaussian.github.io) | [Arxiv]()
+### [Project Page](https://dreamgaussian.github.io) | [Arxiv](https://arxiv.org/abs/2309.16653)
 
 
 https://github.com/dreamgaussian/dreamgaussian/assets/25863658/db860801-7b9c-4b30-9eb9-87330175f5c8
@@ -116,5 +116,10 @@ This work is built on many amazing research works and open-source projects, than
 ## Citation
 
 ```
-
+@article{tang2023dreamgaussian,
+  title={DreamGaussian: Generative Gaussian Splatting for Efficient 3D Content Creation},
+  author={Tang, Jiaxiang and Ren, Jiawei and Zhou, Hang and Liu, Ziwei and Zeng, Gang},
+  journal={arXiv preprint arXiv:2309.16653},
+  year={2023}
+}
 ```
