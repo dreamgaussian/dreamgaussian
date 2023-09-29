@@ -48,7 +48,7 @@ class Renderer(nn.Module):
 
         self.mesh = Mesh.load(self.opt.mesh, resize=False)
 
-        if not self.opt.gui or os.name == 'nt':
+        if not self.opt.force_cuda_rast and (not self.opt.gui or os.name == 'nt'):
             self.glctx = dr.RasterizeGLContext()
         else:
             self.glctx = dr.RasterizeCudaContext()
