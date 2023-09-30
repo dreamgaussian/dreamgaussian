@@ -3,7 +3,7 @@ import glob
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--dir', default='logs', type=str, help='Directory where obj files will be saved')
+parser.add_argument('--dir', default='logs', type=str, help='Directory where obj files are stored')
 parser.add_argument('--out', default='videos', type=str, help='Directory where videos will be saved')
 args = parser.parse_args()
 
