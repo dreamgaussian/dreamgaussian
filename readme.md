@@ -39,7 +39,7 @@ Tested on:
 Image-to-3D:
 ```bash
 ### preprocess
-# background removal and recenter, save rgba at 256x256
+# background removal and recentering, save rgba at 256x256
 python process.py data/name.jpg
 
 # save at a larger resolution
