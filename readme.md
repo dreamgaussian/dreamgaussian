@@ -16,7 +16,7 @@ https://github.com/dreamgaussian/dreamgaussian/assets/25863658/db860801-7b9c-4b3
 ```bash
 pip install -r requirements.txt
 
-# a modified gaussain splatting (+ depth, alpha rendering)
+# a modified gaussian splatting (+ depth, alpha rendering)
 git clone --recursive https://github.com/ashawkey/diff-gaussian-rasterization
 pip install ./diff-gaussian-rasterization
 
