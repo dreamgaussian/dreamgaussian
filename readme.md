@@ -122,6 +122,48 @@ python scripts/runall_sd.py --gpu 0
 python scripts/convert_obj_to_video.py --dir ./logs
 ```
 
+## Contribution Guidelines
+
+We welcome contributions to the DreamGaussian project from the community. Before contributing, please take a moment to review the following guidelines to ensure a smooth and collaborative experience:
+
+### Code of Conduct
+
+Please review and adhere to our [Code of Conduct](CODE_OF_CONDUCT.md) to create a respectful and inclusive environment for everyone in the community.
+
+### How to Contribute
+
+1. **Fork the Repository:** Click the "Fork" button on the top right-hand corner of this repository to create your own fork.
+
+2. **Clone Your Fork:** Clone your forked repository to your local machine using the following command:
+
+3. **Create a Branch:** Create a new branch for your contribution. A descriptive branch name is encouraged:
+
+4. **Make Changes:** Make your changes or improvements to the codebase. Ensure that your code follows our coding conventions and standards.
+
+5. **Commit Changes:** Commit your changes with clear and concise commit messages:
+
+6. **Push to Your Fork:** Push your changes to your forked repository:
+
+7. **Open a Pull Request:** Go to the [original repository](https://github.com/dreamgaussian/dreamgaussian) and open a pull request. Provide a clear title and description of your changes.
+
+### Code Contribution Rules
+
+When contributing code to DreamGaussian, please follow these essential rules:
+
+- Adhere to the project's coding style and formatting guidelines.
+- Write clear and concise code comments and documentation.
+- Ensure that your code is well-tested, and write appropriate test cases.
+- Keep pull requests focused on a single task or feature.
+- Avoid making unrelated code changes in a single pull request.
+- Before submitting a pull request, ensure your changes do not break existing functionality.
+- Be responsive to feedback and comments on your pull requests.
+
+### Reporting Issues
+
+If you find any bugs, issues, or have suggestions for improvements, please open a [new issue](https://github.com/dreamgaussian/dreamgaussian/issues) with a detailed description of the problem or enhancement request.
+
+Thank you for considering contributing to DreamGaussian!
+
 ## Acknowledgement
 
 This work is built on many amazing research works and open-source projects, thanks a lot to all the authors for sharing!
