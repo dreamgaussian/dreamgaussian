@@ -16,7 +16,7 @@ from mesh_renderer import Renderer
 
 # from kiui.lpips import LPIPS
 
-class GUI:
+class gui:
     def __init__(self, opt):
         self.opt = opt  # shared with the trainer's opt to support in-place modification of rendering parameters.
         self.gui = opt.gui # enable gui
@@ -663,7 +663,7 @@ if __name__ == "__main__":
         else:
             raise ValueError(f"Cannot find mesh from {default_path}, must specify --mesh explicitly!")
 
-    gui = GUI(opt)
+    gui = gui(opt)
 
     if opt.gui:
         gui.render()
