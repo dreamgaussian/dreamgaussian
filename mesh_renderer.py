@@ -39,9 +39,19 @@ def trunc_rev_sigmoid(x, eps=1e-6):
 def make_divisible(x, m=8):
     return int(math.ceil(x / m) * m)
 
+
 class Renderer(nn.Module):
+    """
+    This class represents a renderer for 3D meshes.
+    """
     def __init__(self, opt):
-        
+        """
+        Initializes a new Renderer object with the given options.
+
+        Parameters:
+            opt: The options for the renderer.
+        """
+
         super().__init__()
 
         self.opt = opt
@@ -52,13 +62,19 @@ class Renderer(nn.Module):
             self.glctx = dr.RasterizeGLContext()
         else:
             self.glctx = dr.RasterizeCudaContext()
-        
+
         # extract trainable parameters
         self.v_offsets = nn.Parameter(torch.zeros_like(self.mesh.v))
         self.raw_albedo = nn.Parameter(trunc_rev_sigmoid(self.mesh.albedo))
 
 
     def get_params(self):
+        """
+        Returns a list of trainable parameters.
+
+        Returns:
+            list: A list of trainable parameters.
+        """
 
         params = [
             {'params': self.raw_albedo, 'lr': self.opt.texture_lr},
@@ -71,20 +87,41 @@ class Renderer(nn.Module):
 
     @torch.no_grad()
     def export_mesh(self, save_path):
+        """
+        Exports the modified mesh to a file.
+
+        Parameters:
+            save_path (str): The path to save the exported mesh.
+        """
         self.mesh.v = (self.mesh.v + self.v_offsets).detach()
         self.mesh.albedo = torch.sigmoid(self.raw_albedo.detach())
         self.mesh.write(save_path)
 
-    
+
     def render(self, pose, proj, h0, w0, ssaa=1, bg_color=1, texture_filter='linear-mipmap-linear'):
-        
+        """
+        Render an image based on the input parameters.
+
+        Parameters:
+            pose (numpy.ndarray): The pose matrix.
+            proj (numpy.ndarray): The projection matrix.
+            h0 (int): The original height.
+            w0 (int): The original width.
+            ssaa (int, optional): The super-sampling factor. Defaults to 1.
+            bg_color (int, optional): The background color. Defaults to 1.
+            texture_filter (str, optional): The texture filter mode. Defaults to 'linear-mipmap-linear'.
+
+        Returns:
+            dict: A dictionary containing the rendered image, alpha values, depth values, normal values, and viewcos values.
+        """
+
         # do super-sampling
         if ssaa != 1:
             h = make_divisible(h0 * ssaa, 8)
             w = make_divisible(w0 * ssaa, 8)
         else:
             h, w = h0, w0
-        
+
         results = {}
 
         # get v
@@ -116,7 +153,7 @@ class Renderer(nn.Module):
 
             face_normals = torch.cross(v1 - v0, v2 - v0)
             face_normals = safe_normalize(face_normals)
-            
+
             vn = torch.zeros_like(v)
             vn.scatter_add_(0, i0[:, None].repeat(1,3), face_normals)
             vn.scatter_add_(0, i1[:, None].repeat(1,3), face_normals)
@@ -125,7 +162,7 @@ class Renderer(nn.Module):
             vn = torch.where(torch.sum(vn * vn, -1, keepdim=True) > 1e-20, vn, torch.tensor([0.0, 0.0, 1.0], dtype=torch.float32, device=vn.device))
         else:
             vn = self.mesh.vn
-        
+
         normal, _ = dr.interpolate(vn.unsqueeze(0).contiguous(), rast, self.mesh.fn)
         normal = safe_normalize(normal[0])
 

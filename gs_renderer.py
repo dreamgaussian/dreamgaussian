@@ -20,12 +20,32 @@ from mesh_utils import decimate_mesh, clean_mesh
 import kiui
 
 def inverse_sigmoid(x):
+    """Calculate the inverse of the sigmoid function.
+
+    Parameters:
+        x (float): The input value.
+
+    Returns:
+        float: The result of the inverse sigmoid function.
+    """
     return torch.log(x/(1-x))
 
 def get_expon_lr_func(
     lr_init, lr_final, lr_delay_steps=0, lr_delay_mult=1.0, max_steps=1000000
 ):
-    
+    """Calculate a learning rate function based on the provided parameters.
+
+    Parameters:
+        lr_init (float): The initial learning rate.
+        lr_final (float): The final learning rate.
+        lr_delay_steps (int, optional): The number of delay steps. Defaults to 0.
+        lr_delay_mult (float, optional): The delay multiplier. Defaults to 1.0.
+        max_steps (int, optional): The maximum number of steps. Defaults to 1000000.
+
+    Returns:
+        function: A helper function that calculates the learning rate based on the step.
+    """
+
     def helper(step):
         if lr_init == lr_final:
             # constant lr, ignore other params
@@ -48,6 +68,15 @@ def get_expon_lr_func(
 
 
 def strip_lowerdiag(L):
+    """
+    Copy the lower diagonal elements of the given tensor to the first 6 columns of a new tensor.
+
+    Parameters:
+        L (torch.Tensor): The input tensor.
+
+    Returns:
+        torch.Tensor: The new tensor with the lower diagonal elements copied.
+    """
     uncertainty = torch.zeros((L.shape[0], 6), dtype=torch.float, device="cuda")
 
     uncertainty[:, 0] = L[:, 0, 0]
@@ -59,9 +88,30 @@ def strip_lowerdiag(L):
     return uncertainty
 
 def strip_symmetric(sym):
+    """
+    Helper function that calls strip_lowerdiag with the same input.
+
+    Parameters:
+        sym: The input tensor.
+
+    Returns:
+        torch.Tensor: The result of strip_lowerdiag.
+    """
     return strip_lowerdiag(sym)
 
 def gaussian_3d_coeff(xyzs, covs):
+    """
+    Compute the power values for each element of xyzs using covs.
+    Apply a threshold to set any positive power values to -1e10.
+    Return the exponential of the power values as a tensor.
+
+    Parameters:
+        xyzs (torch.Tensor): The input tensor xyzs.
+        covs (torch.Tensor): The input tensor covs.
+
+    Returns:
+        torch.Tensor: The result tensor.
+    """
     # xyzs: [N, 3]
     # covs: [N, 6]
     x, y, z = xyzs[:, 0], xyzs[:, 1], xyzs[:, 2]
@@ -79,10 +129,20 @@ def gaussian_3d_coeff(xyzs, covs):
     power = -0.5 * (x**2 * inv_a + y**2 * inv_d + z**2 * inv_f) - x * y * inv_b - x * z * inv_c - y * z * inv_e
 
     power[power > 0] = -1e10 # abnormal values... make weights 0
-        
+
     return torch.exp(power)
 
 def build_rotation(r):
+    """
+    Build a rotation matrix using the elements of the input tensor r.
+
+    Parameters:
+        r (torch.Tensor): A tensor containing the elements needed to build the rotation matrix.
+            The tensor should have shape (N, 4), where N is the number of rotation matrices to compute.
+
+    Returns:
+        torch.Tensor: A tensor containing the rotation matrices. The tensor has shape (N, 3, 3).
+    """
     norm = torch.sqrt(r[:,0]*r[:,0] + r[:,1]*r[:,1] + r[:,2]*r[:,2] + r[:,3]*r[:,3])
 
     q = r / norm[:, None]
@@ -106,6 +166,18 @@ def build_rotation(r):
     return R
 
 def build_scaling_rotation(s, r):
+    """
+    Build a scaling and rotation matrix using the elements of the input tensors s and r.
+
+    Parameters:
+        s (torch.Tensor): A tensor containing the scaling factors. The tensor should have shape (N, 3),
+            where N is the number of scaling and rotation matrices to compute.
+        r (torch.Tensor): A tensor containing the elements needed to build the rotation matrix.
+            The tensor should have shape (N, 4).
+
+    Returns:
+        torch.Tensor: A tensor containing the scaling and rotation matrices. The tensor has shape (N, 3, 3).
+    """
     L = torch.zeros((s.shape[0], 3, 3), dtype=torch.float, device="cuda")
     R = build_rotation(r)
 
@@ -117,6 +189,14 @@ def build_scaling_rotation(s, r):
     return L
 
 class BasicPointCloud(NamedTuple):
+    """
+    A named tuple representing a basic point cloud.
+
+    Attributes:
+        points (np.array): An array of points.
+        colors (np.array): An array of colors.
+        normals (np.array): An array of normals.
+    """
     points: np.array
     colors: np.array
     normals: np.array
@@ -125,12 +205,23 @@ class BasicPointCloud(NamedTuple):
 class GaussianModel:
 
     def setup_functions(self):
+        """
+        Set up various activation functions.
+
+        This method sets up the following activation functions:
+        - scaling_activation: exponential function
+        - scaling_inverse_activation: logarithm function
+        - covariance_activation: function to build covariance from scaling and rotation
+        - opacity_activation: sigmoid function
+        - inverse_opacity_activation: inverse sigmoid function
+        - rotation_activation: normalization function
+        """
         def build_covariance_from_scaling_rotation(scaling, scaling_modifier, rotation):
             L = build_scaling_rotation(scaling_modifier * scaling, rotation)
             actual_covariance = L @ L.transpose(1, 2)
             symm = strip_symmetric(actual_covariance)
             return symm
-        
+
         self.scaling_activation = torch.exp
         self.scaling_inverse_activation = torch.log
 
@@ -143,6 +234,28 @@ class GaussianModel:
 
 
     def __init__(self, sh_degree : int):
+        """
+        Initialize a GaussianModel instance.
+
+        This method initializes the following attributes:
+        - active_sh_degree: 0
+        - max_sh_degree: sh_degree
+        - _xyz: empty tensor
+        - _features_dc: empty tensor
+        - _features_rest: empty tensor
+        - _scaling: empty tensor
+        - _rotation: empty tensor
+        - _opacity: empty tensor
+        - max_radii2D: empty tensor
+        - xyz_gradient_accum: empty tensor
+        - denom: empty tensor
+        - optimizer: None
+        - percent_dense: 0
+        - spatial_lr_scale: 0
+
+        Parameters:
+            sh_degree (int): The SH degree
+        """
         self.active_sh_degree = 0
         self.max_sh_degree = sh_degree  
         self._xyz = torch.empty(0)
@@ -174,7 +287,7 @@ class GaussianModel:
             self.optimizer.state_dict(),
             self.spatial_lr_scale,
         )
-    
+
     def restore(self, model_args, training_args):
         (self.active_sh_degree, 
         self._xyz, 
@@ -196,29 +309,51 @@ class GaussianModel:
     @property
     def get_scaling(self):
         return self.scaling_activation(self._scaling)
-    
+
     @property
     def get_rotation(self):
         return self.rotation_activation(self._rotation)
-    
+
     @property
     def get_xyz(self):
         return self._xyz
-    
+
     @property
     def get_features(self):
         features_dc = self._features_dc
         features_rest = self._features_rest
         return torch.cat((features_dc, features_rest), dim=1)
-    
+
+
     @property
     def get_opacity(self):
+        """
+        Get the opacity value.
+
+        This method returns the result of calling the 'opacity_activation' function
+        with the '_opacity' attribute as an argument.
+
+        Returns:
+            The opacity value.
+        """
         return self.opacity_activation(self._opacity)
 
     @torch.no_grad()
     def extract_fields(self, resolution=128, num_blocks=16, relax_ratio=1.5):
+        """Extract fields from the input data.
+
+        This function takes in several parameters and returns a tensor 'occ' representing the extracted fields. The function performs operations on the input data to extract and process fields. It uses nested loops to iterate over the X, Y, and Z dimensions of the input tensor, and within each loop, it calculates the values of xx, yy, and zz tensors using torch.meshgrid. It then concatenates these tensors and applies some calculations to obtain a tensor 'pts'. The function then applies some operations on 'pts' and other tensors to calculate the final value of 'occ'.
+
+        Parameters:
+            resolution (int): The resolution of the field.
+            num_blocks (int): The number of blocks.
+            relax_ratio (float): The relaxation ratio.
+
+        Returns:
+            torch.Tensor: The extracted fields.
+        """
         # resolution: resolution of field
-        
+
         block_size = 2 / num_blocks
 
         assert resolution % block_size == 0
@@ -232,7 +367,7 @@ class GaussianModel:
         opacities = opacities[mask]
         xyzs = self.get_xyz[mask]
         stds = self.get_scaling[mask]
-        
+
         # normalize to ~ [-1, 1]
         mn, mx = xyzs.amin(0), xyzs.amax(0)
         self.center = (mn + mx) / 2
@@ -282,18 +417,32 @@ class GaussianModel:
                         end = min(start + batch_g, g_covs.shape[1])
                         w = gaussian_3d_coeff(g_pts[:, start:end].reshape(-1, 3), g_covs[:, start:end].reshape(-1, 6)).reshape(pts.shape[0], -1) # [M, l]
                         val += (mask_opas[:, start:end] * w).sum(-1)
-                    
+
                     # kiui.lo(val, mask_opas, w)
-                
+
                     occ[xi * split_size: xi * split_size + len(xs), 
                         yi * split_size: yi * split_size + len(ys), 
                         zi * split_size: zi * split_size + len(zs)] = val.reshape(len(xs), len(ys), len(zs)) 
-        
+
         kiui.lo(occ, verbose=1)
 
         return occ
-    
+
     def extract_mesh(self, path, density_thresh=1, resolution=128, decimate_target=1e5):
+        """
+        Extracts a mesh from the given path.
+
+        This method creates a mesh by extracting fields from the given resolution and applying a density threshold. The resulting mesh is then transformed and cleaned. If the number of triangles is larger than the specified decimate target, the mesh is decimated.
+
+        Parameters:
+            path (str): The path to save the mesh.
+            density_thresh (int, optional): The density threshold for extracting the mesh. Defaults to 1.
+            resolution (int, optional): The resolution of the extracted fields. Defaults to 128.
+            decimate_target (float, optional): The target number of triangles for decimation. Defaults to 1e5.
+
+        Returns:
+            Mesh: The extracted mesh.
+        """
 
         os.makedirs(os.path.dirname(path), exist_ok=True)
 
@@ -320,15 +469,44 @@ class GaussianModel:
         mesh = Mesh(v=v, f=f, device='cuda')
 
         return mesh
-    
+
     def get_covariance(self, scaling_modifier = 1):
+        """
+        Returns the covariance of the object.
+
+        This method calculates the covariance of the object by applying the scaling modifier to the scaling factor and the rotation.
+
+        Parameters:
+            scaling_modifier (int, optional): The scaling modifier for the scaling factor. Defaults to 1.
+
+        Returns:
+            Covariance: The covariance of the object.
+        """
         return self.covariance_activation(self.get_scaling, scaling_modifier, self._rotation)
 
     def oneupSHdegree(self):
+        """
+        Increments the active spherical harmonics degree by one.
+
+        This method increments the active spherical harmonics degree by one if it is less than the maximum spherical harmonics degree.
+        """
         if self.active_sh_degree < self.max_sh_degree:
             self.active_sh_degree += 1
 
     def create_from_pcd(self, pcd : BasicPointCloud, spatial_lr_scale : float = 1):
+        """
+        Create a new object from a BasicPointCloud object.
+
+        This function takes a BasicPointCloud object 'pcd' and an optional float parameter 'spatial_lr_scale'.
+        The 'spatial_lr_scale' value is assigned to the 'self.spatial_lr_scale' attribute.
+        The function then converts the 'points' and 'colors' attributes of the 'pcd' object to tensors,
+        performs some calculations, and initializes several attributes of the 'self' object.
+        Finally, the function prints the number of points at initialization.
+
+        Parameters:
+            pcd (BasicPointCloud): The BasicPointCloud object to create from.
+            spatial_lr_scale (float, optional): The spatial lr scale value (default is 1).
+        """
         self.spatial_lr_scale = spatial_lr_scale
         fused_point_cloud = torch.tensor(np.asarray(pcd.points)).float().cuda()
         fused_color = RGB2SH(torch.tensor(np.asarray(pcd.colors)).float().cuda())
@@ -354,6 +532,15 @@ class GaussianModel:
         self.max_radii2D = torch.zeros((self.get_xyz.shape[0]), device="cuda")
 
     def training_setup(self, training_args):
+        """
+        Set up the training for the neural network model.
+
+        This function initializes variables, creates a list of parameters for optimization,
+        initializes an optimizer, and sets up a learning rate scheduler.
+
+        Parameters:
+            training_args: An object containing training arguments.
+        """
         self.percent_dense = training_args.percent_dense
         self.xyz_gradient_accum = torch.zeros((self.get_xyz.shape[0], 1), device="cuda")
         self.denom = torch.zeros((self.get_xyz.shape[0], 1), device="cuda")
@@ -372,9 +559,16 @@ class GaussianModel:
                                                     lr_final=training_args.position_lr_final*self.spatial_lr_scale,
                                                     lr_delay_mult=training_args.position_lr_delay_mult,
                                                     max_steps=training_args.position_lr_max_steps)
-
     def update_learning_rate(self, iteration):
-        ''' Learning rate scheduling per step '''
+        '''
+        Learning rate scheduling per step
+
+        Parameters:
+            iteration (int): The current iteration.
+
+        Returns:
+            float: The updated learning rate.
+        '''
         for param_group in self.optimizer.param_groups:
             if param_group["name"] == "xyz":
                 lr = self.xyz_scheduler_args(iteration)
@@ -382,6 +576,12 @@ class GaussianModel:
                 return lr
 
     def construct_list_of_attributes(self):
+        '''
+        Construct a list of attributes.
+
+        Returns:
+            list: A list of attributes.
+        '''
         l = ['x', 'y', 'z', 'nx', 'ny', 'nz']
         # All channels except the 3 DC
         for i in range(self._features_dc.shape[1]*self._features_dc.shape[2]):
@@ -396,6 +596,15 @@ class GaussianModel:
         return l
 
     def save_ply(self, path):
+        """
+        Save the point cloud in the PLY format.
+
+        This function creates a PLY file at the specified path and saves the point cloud
+        data with attributes such as XYZ coordinates, normals, features, opacities, scale, and rotation.
+
+        Parameters:
+            path (str): The path where the PLY file will be saved.
+        """
         os.makedirs(os.path.dirname(path), exist_ok=True)
 
         xyz = self._xyz.detach().cpu().numpy()
@@ -415,11 +624,23 @@ class GaussianModel:
         PlyData([el]).write(path)
 
     def reset_opacity(self):
+        """
+        Reset the opacity values of the point cloud.
+
+        This function updates the opacity values of the point cloud by applying an inverse sigmoid
+        to the minimum opacity value of the current point cloud opacity values.
+        """
         opacities_new = inverse_sigmoid(torch.min(self.get_opacity, torch.ones_like(self.get_opacity)*0.01))
         optimizable_tensors = self.replace_tensor_to_optimizer(opacities_new, "opacity")
         self._opacity = optimizable_tensors["opacity"]
 
     def load_ply(self, path):
+        """
+        Load data from a PLY file and assign it to the corresponding class attributes.
+
+        Parameters:
+            path (str): The path to the PLY file.
+        """
         plydata = PlyData.read(path)
 
         xyz = np.stack((np.asarray(plydata.elements[0]["x"]),
@@ -462,6 +683,16 @@ class GaussianModel:
         self.active_sh_degree = self.max_sh_degree
 
     def replace_tensor_to_optimizer(self, tensor, name):
+        """
+        Replaces a tensor in the optimizer's state with a new tensor and updates the optimizer's state accordingly.
+
+        Parameters:
+            tensor: The new tensor to be inserted into the optimizer's state.
+            name (str): The name of the group to which the tensor belongs.
+
+        Returns:
+            dict: A dictionary containing the names of the optimizable tensors as keys and the corresponding tensors as values.
+        """
         optimizable_tensors = {}
         for group in self.optimizer.param_groups:
             if group["name"] == name:
@@ -477,6 +708,18 @@ class GaussianModel:
         return optimizable_tensors
 
     def _prune_optimizer(self, mask):
+        """
+        Prune the optimizer based on the given mask.
+
+        This private method iterates over the parameter groups of the optimizer and updates the stored_state,
+        optimizer state, and group parameters based on the given mask. It then returns a dictionary of the optimizable tensors.
+
+        Parameters:
+            mask (bool): A boolean mask specifying the elements to be pruned.
+
+        Returns:
+            dict: A dictionary of the optimizable tensors.
+        """
         optimizable_tensors = {}
         for group in self.optimizer.param_groups:
             stored_state = self.optimizer.state.get(group['params'][0], None)
@@ -495,6 +738,21 @@ class GaussianModel:
         return optimizable_tensors
 
     def prune_points(self, mask):
+        """
+        Apply pruning to the points based on the inverse of the mask.
+
+        This method updates the following attributes of the object:
+        - _xyz
+        - _features_dc
+        - _features_rest
+        - _opacity
+        - _scaling
+        - _rotation
+        It also updates the xyz_gradient_accum, denom, and max_radii2D attributes by filtering them based on the valid_points_mask.
+
+        Parameters:
+            mask (array-like): A mask indicating which points to prune.
+        """
         valid_points_mask = ~mask
         optimizable_tensors = self._prune_optimizer(valid_points_mask)
 
@@ -511,6 +769,18 @@ class GaussianModel:
         self.max_radii2D = self.max_radii2D[valid_points_mask]
 
     def cat_tensors_to_optimizer(self, tensors_dict):
+        """
+        Concatenate tensors from tensors_dict to the optimizer's state.
+
+        This function takes two parameters: self, a reference to the current object instance, and tensors_dict, a dictionary containing tensors. It iterates over the param_groups of the optimizer and performs various operations on the tensors. It concatenates the extension_tensor with the exp_avg and exp_avg_sq tensors in the optimizer's state dictionary. If the stored_state is not None, it updates the exp_avg and exp_avg_sq tensors and replaces the group's param in the optimizer's state dictionary. Finally, it returns a dictionary of optimizable tensors.
+
+        Parameters:
+            self: A reference to the current object instance.
+            tensors_dict (dict): A dictionary containing tensors.
+
+        Returns:
+            dict: A dictionary of optimizable tensors.
+        """
         optimizable_tensors = {}
         for group in self.optimizer.param_groups:
             assert len(group["params"]) == 1
@@ -533,6 +803,19 @@ class GaussianModel:
         return optimizable_tensors
 
     def densification_postfix(self, new_xyz, new_features_dc, new_features_rest, new_opacities, new_scaling, new_rotation):
+        """
+        Perform densification postfix operation.
+
+        This method takes in several parameters representing new values for xyz, features_dc, features_rest, opacities, scaling, and rotation. It constructs a dictionary from these values and passes it to the cat_tensors_to_optimizer method. The resulting optimizable_tensors are then assigned to their respective attributes of the object. Finally, the method initializes the xyz_gradient_accum, denom, and max_radii2D attributes with zero tensors.
+
+        Parameters:
+            new_xyz: The new xyz values.
+            new_features_dc: The new features_dc values.
+            new_features_rest: The new features_rest values.
+            new_opacities: The new opacities values.
+            new_scaling: The new scaling values.
+            new_rotation: The new rotation values.
+        """
         d = {"xyz": new_xyz,
         "f_dc": new_features_dc,
         "f_rest": new_features_rest,
@@ -553,6 +836,15 @@ class GaussianModel:
         self.max_radii2D = torch.zeros((self.get_xyz.shape[0]), device="cuda")
 
     def densify_and_split(self, grads, grad_threshold, scene_extent, N=2):
+        """
+        Densify and split points based on certain conditions.
+
+        Parameters:
+            grads (torch.Tensor): The gradients.
+            grad_threshold (float): The gradient threshold.
+            scene_extent (float): The extent of the scene.
+            N (int, optional): The number of times to repeat the generated data. Defaults to 2.
+        """
         n_init_points = self.get_xyz.shape[0]
         # Extract points that satisfy the gradient condition
         padded_grad = torch.zeros((n_init_points), device="cuda")
@@ -578,11 +870,24 @@ class GaussianModel:
         self.prune_points(prune_filter)
 
     def densify_and_clone(self, grads, grad_threshold, scene_extent):
+        """
+        Densify and clone the point cloud based on gradient condition and scaling.
+
+        This function takes in the gradients `grads`, a gradient threshold `grad_threshold`, and the extent of the scene `scene_extent`.
+        It extracts the points from `grads` that satisfy the gradient condition and additional conditions based on scaling.
+        The extracted points are then used to create new arrays `new_xyz`, `new_features_dc`, `new_features_rest`, `new_opacities`, `new_scaling`, and `new_rotation`.
+        The function then calls `densification_postfix` with the newly created arrays as arguments.
+
+        Parameters:
+            grads (torch.Tensor): The gradients.
+            grad_threshold (float): The gradient threshold.
+            scene_extent (float): The extent of the scene.
+        """
         # Extract points that satisfy the gradient condition
         selected_pts_mask = torch.where(torch.norm(grads, dim=-1) >= grad_threshold, True, False)
         selected_pts_mask = torch.logical_and(selected_pts_mask,
                                               torch.max(self.get_scaling, dim=1).values <= self.percent_dense*scene_extent)
-        
+
         new_xyz = self._xyz[selected_pts_mask]
         new_features_dc = self._features_dc[selected_pts_mask]
         new_features_rest = self._features_rest[selected_pts_mask]
@@ -593,6 +898,15 @@ class GaussianModel:
         self.densification_postfix(new_xyz, new_features_dc, new_features_rest, new_opacities, new_scaling, new_rotation)
 
     def densify_and_prune(self, max_grad, min_opacity, extent, max_screen_size):
+        """
+        Densifies and prunes the gradient array and then prunes points based on opacity and screen size.
+
+        Parameters:
+            max_grad: The maximum gradient value.
+            min_opacity: The minimum opacity value.
+            extent: The extent of the gradient array.
+            max_screen_size: The maximum screen size.
+        """
         grads = self.xyz_gradient_accum / self.denom
         grads[grads.isnan()] = 0.0
 
@@ -609,6 +923,14 @@ class GaussianModel:
         torch.cuda.empty_cache()
 
     def prune(self, min_opacity, extent, max_screen_size):
+        """
+        Prunes points based on opacity and screen size.
+
+        Parameters:
+            min_opacity: The minimum opacity value.
+            extent: The extent of the gradient array.
+            max_screen_size: The maximum screen size.
+        """
 
         prune_mask = (self.get_opacity < min_opacity).squeeze()
         if max_screen_size:
@@ -621,10 +943,31 @@ class GaussianModel:
 
 
     def add_densification_stats(self, viewspace_point_tensor, update_filter):
+        """
+        Updates the gradient accumulation array and the denominator array based on a gradient tensor.
+
+        Parameters:
+            viewspace_point_tensor: The gradient tensor.
+            update_filter: The update filter.
+        """
         self.xyz_gradient_accum[update_filter] += torch.norm(viewspace_point_tensor.grad[update_filter,:2], dim=-1, keepdim=True)
         self.denom[update_filter] += 1
 
 def getProjectionMatrix(znear, zfar, fovX, fovY):
+    """Calculate the projection matrix for a given set of parameters.
+
+    This function calculates the projection matrix for a camera using the specified
+    near and far clipping planes, and the horizontal and vertical field of view.
+
+    Parameters:
+        znear (float): The distance to the near clipping plane.
+        zfar (float): The distance to the far clipping plane.
+        fovX (float): The horizontal field of view in radians.
+        fovY (float): The vertical field of view in radians.
+
+    Returns:
+        torch.Tensor: The projection matrix.
+    """
     tanHalfFovY = math.tan((fovY / 2))
     tanHalfFovX = math.tan((fovX / 2))
 
@@ -641,6 +984,23 @@ def getProjectionMatrix(znear, zfar, fovX, fovY):
 
 
 class MiniCam:
+    """This class represents a camera.
+
+    The camera is initialized with a transformation matrix, width, height, field of view
+    values, and near and far clipping planes.
+
+    Attributes:
+        image_width (int): The width of the camera image.
+        image_height (int): The height of the camera image.
+        FoVy (float): The vertical field of view in radians.
+        FoVx (float): The horizontal field of view in radians.
+        znear (float): The distance to the near clipping plane.
+        zfar (float): The distance to the far clipping plane.
+        world_view_transform (torch.Tensor): The transformation matrix from world to view coordinates.
+        projection_matrix (torch.Tensor): The projection matrix for the camera.
+        full_proj_transform (torch.Tensor): The combined world-to-view and projection transform matrix.
+        camera_center (torch.Tensor): The center of the camera.
+    """
     def __init__(self, c2w, width, height, fovy, fovx, znear, zfar):
         # c2w (pose) should be in NeRF convention.
 
@@ -670,8 +1030,19 @@ class MiniCam:
 
 
 class Renderer:
+    """
+    This class represents a renderer.
+    """
     def __init__(self, sh_degree=3, white_background=True, radius=1):
-        
+        """
+        Initialize a new Renderer instance.
+
+        Parameters:
+            sh_degree (int): The degree of the spherical harmonics.
+            white_background (bool): Whether to use a white background.
+            radius (int): The radius.
+        """
+
         self.sh_degree = sh_degree
         self.white_background = white_background
         self.radius = radius
@@ -683,12 +1054,22 @@ class Renderer:
             dtype=torch.float32,
             device="cuda",
         )
-    
+
     def initialize(self, input=None, num_pts=5000, radius=0.5):
+        """
+        Initialize the point cloud.
+
+        This function initializes a point cloud with random points and colors.
+
+        Parameters:
+            input (BasicPointCloud, optional): An optional input point cloud.
+            num_pts (int, optional): The number of points in the cloud. Default is 5000.
+            radius (float, optional): The radius of the points. Default is 0.5.
+        """
         # load checkpoint
         if input is None:
             # init from random point cloud
-            
+
             phis = np.random.random((num_pts,)) * 2 * np.pi
             costheta = np.random.random((num_pts,)) * 2 - 1
             thetas = np.arccos(costheta)
@@ -721,6 +1102,22 @@ class Renderer:
         compute_cov3D_python=False,
         convert_SHs_python=False,
     ):
+        """
+        Render the image of Gaussians.
+
+        This function takes in various parameters and performs a series of calculations and operations to render an image of Gaussians. It initializes a tensor for screen-space points and sets up the rasterization configuration. It then processes the means, opacity, scales, rotations, covariance, and colors of the Gaussians. Finally, it rasterizes the visible Gaussians, clamps the rendered image, and returns the rendered image, depth, alpha, screen-space points, visibility filter, and radii.
+
+        Parameters:
+            viewpoint_camera: The viewpoint camera.
+            scaling_modifier (float): The scaling modifier.
+            invert_bg_color (bool): Whether to invert the background color.
+            override_color: The overridden color.
+            compute_cov3D_python (bool): Whether to compute the 3D covariance in Python.
+            convert_SHs_python (bool): Whether to convert SHs in Python.
+
+        Returns:
+            dict: A dictionary containing the rendered image, depth, alpha, screen-space points, visibility filter, and radii.
+        """
         # Create zero tensor. We will use it to make pytorch return gradients of the 2D (screen-space) means
         screenspace_points = (
             torch.zeros_like(
@@ -818,3 +1215,4 @@ class Renderer:
             "visibility_filter": radii > 0,
             "radii": radii,
         }
+
