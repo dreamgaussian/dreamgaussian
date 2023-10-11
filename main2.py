@@ -320,7 +320,7 @@ class GUI:
     def save_model(self):
         os.makedirs(self.opt.outdir, exist_ok=True)
     
-        path = os.path.join(self.opt.outdir, self.opt.save_path + '.' + opt.mesh_format)
+        path = os.path.join(self.opt.outdir, self.opt.save_path + '.' + self.opt.mesh_format)
         self.renderer.export_mesh(path)
 
         print(f"[INFO] save model to {path}.")
