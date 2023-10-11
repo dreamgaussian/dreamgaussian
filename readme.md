@@ -11,6 +11,8 @@ https://github.com/dreamgaussian/dreamgaussian/assets/25863658/db860801-7b9c-4b3
 * Image-to-3D: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1sLpYmmLS209-e5eHgcuqdryFRRO6ZhFS?usp=sharing)
 * Text-to-3D: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/camenduru/dreamgaussian-colab/blob/main/dreamgaussian_colab.ipynb)
 
+### [Gradio demo](https://huggingface.co/spaces/jiawei011/dreamgaussian)
+* Image-to-3D: <a href="https://huggingface.co/spaces/jiawei011/dreamgaussian"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Gradio%20Demo-Huggingface-orange"></a>
 
 ## Install
 ```bash
@@ -109,6 +111,11 @@ python scripts/runall_sd.py --gpu 0
 
 # export all ./logs/*.obj to mp4 in ./videos
 python scripts/convert_obj_to_video.py --dir ./logs
+```
+
+### Gradio Demo
+```bash
+python gradio_app.py
 ```
 
 ## Acknowledgement

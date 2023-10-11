@@ -32,3 +32,6 @@ PyMCubes
 pymeshlab
 
 rembg[gpu,cli]
+
+# gradio demo
+gradio

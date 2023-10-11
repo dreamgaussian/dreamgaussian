@@ -5,6 +5,7 @@ build/
 venv_*/
 .vs/
 .vscode/
+.idea/
 
 tmp_*
 data?
