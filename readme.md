@@ -113,7 +113,7 @@ python scripts/runall_sd.py --gpu 0
 python scripts/convert_obj_to_video.py --dir ./logs
 ```
 
-### Gradio Demo
+Gradio Demo:
 ```bash
 python gradio_app.py
 ```
