@@ -3,6 +3,17 @@ import pymeshlab as pml
 
 
 def poisson_mesh_reconstruction(points, normals=None):
+    """
+    Perform mesh reconstruction using the Poisson surface reconstruction algorithm.
+
+    Parameters:
+        points (ndarray): A 2D array of shape (N, 3) containing the 3D points.
+        normals (ndarray, optional): A 2D array of shape (N, 3) containing the corresponding normals. Defaults to None.
+
+    Returns:
+        ndarray: A 2D array of shape (M, 3) containing the vertices of the reconstructed mesh.
+        ndarray: A 2D array of shape (P, 3) containing the triangles of the reconstructed mesh.
+    """
     # points/normals: [N, 3] np.ndarray
 
     import open3d as o3d
@@ -44,6 +55,21 @@ def poisson_mesh_reconstruction(points, normals=None):
 def decimate_mesh(
     verts, faces, target, backend="pymeshlab", remesh=False, optimalplacement=True
 ):
+    """
+    Decimates the input mesh by reducing the number of vertices.
+
+    Parameters:
+        verts (ndarray): An array of vertices.
+        faces (ndarray): An array of faces.
+        target (int): The target number of vertices.
+        backend (str, optional): The backend library to use. Defaults to "pymeshlab".
+        remesh (bool, optional): Flag indicating whether to perform remeshing. Defaults to False.
+        optimalplacement (bool, optional): Flag indicating whether to use optimal placement. Defaults to True.
+
+    Returns:
+        ndarray: The decimated vertices.
+        ndarray: The decimated faces.
+    """
     # optimalplacement: default is True, but for flat mesh must turn False to prevent spike artifect.
 
     _ori_vert_shape = verts.shape
@@ -95,6 +121,25 @@ def clean_mesh(
     remesh=True,
     remesh_size=0.01,
 ):
+    """
+    Clean and repair a mesh.
+
+    This function takes in a set of vertices and faces that define a mesh and applies a series of filters and operations to clean and repair the mesh. The cleaned vertices and faces are then returned.
+
+    Parameters:
+        verts (numpy array): The vertices of the mesh.
+        faces (numpy array): The faces of the mesh.
+        v_pct (float, optional): The percentage of close vertices to merge. Defaults to 1.
+        min_f (int, optional): The minimum number of faces for a connected component. Defaults to 64.
+        min_d (int, optional): The minimum diameter percentage for a connected component. Defaults to 20.
+        repair (bool, optional): Whether to repair the mesh. Defaults to True.
+        remesh (bool, optional): Whether to remesh the mesh. Defaults to True.
+        remesh_size (float, optional): The target length for remeshing. Defaults to 0.01.
+
+    Returns:
+        numpy array: The cleaned vertices of the mesh.
+        numpy array: The cleaned faces of the mesh.
+    """
     # verts: [N, 3]
     # faces: [N, 3]
 

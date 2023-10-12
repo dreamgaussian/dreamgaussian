@@ -5,17 +5,48 @@ import trimesh
 import numpy as np
 
 def dot(x, y):
+    """
+    Calculate the dot product of two torch tensors.
+
+    Parameters:
+        x (torch.Tensor): The first tensor.
+        y (torch.Tensor): The second tensor.
+
+    Returns:
+        torch.Tensor: The dot product of x and y.
+    """
     return torch.sum(x * y, -1, keepdim=True)
 
 
 def length(x, eps=1e-20):
+    """
+    Calculate the length of a torch tensor.
+
+    Parameters:
+        x (torch.Tensor): The tensor.
+        eps (float, optional): A small value to avoid division by zero.
+
+    Returns:
+        torch.Tensor: The length of x.
+    """
     return torch.sqrt(torch.clamp(dot(x, x), min=eps))
 
 
 def safe_normalize(x, eps=1e-20):
+    """
+    Normalize a torch tensor.
+
+    Parameters:
+        x (torch.Tensor): The tensor.
+        eps (float, optional): A small value to avoid division by zero.
+
+    Returns:
+        torch.Tensor: The normalized tensor.
+    """
     return x / length(x, eps)
 
 class Mesh:
+    """This class represents a mesh object and provides methods for loading and manipulating mesh data."""
     def __init__(
         self,
         v=None,
@@ -28,6 +59,18 @@ class Mesh:
         vc=None, # vertex color
         device=None,
     ):
+        """Initialize a new Mesh object.
+
+        Parameters:
+            v: Vertex data of the mesh.
+            f: Face data of the mesh.
+            vn: Normal data of the mesh.
+            fn: Face normal data of the mesh.
+            vt: Texture coordinate data of the mesh.
+            ft: Face texture coordinate data of the mesh.
+            albedo: Albedo data of the mesh.
+            device: Device used for the mesh.
+        """
         self.device = device
         self.v = v
         self.vn = vn
@@ -244,6 +287,18 @@ class Mesh:
 
     @classmethod
     def load_trimesh(cls, path, device=None):
+        """
+        Load a Trimesh object from a specified path.
+
+        This method loads a Trimesh object from the specified path. It checks the type of the loaded data and extracts the mesh and material information. It then converts the material texture into a torch tensor and assigns it to the 'albedo' attribute of the mesh. The vertices, texture coordinates, normals, and faces of the mesh are extracted and assigned to the appropriate attributes of the mesh object.
+
+        Parameters:
+            path (str): The path to the mesh file.
+            device: The device to be used for tensor operations. Defaults to None.
+
+        Returns:
+            Trimesh: The loaded Trimesh object.
+        """
         mesh = cls()
 
         # device
@@ -331,17 +386,30 @@ class Mesh:
 
     # aabb
     def aabb(self):
+        """Calculate the axis-aligned bounding box of the data.
+
+        Returns:
+            (torch.Tensor, torch.Tensor): A tuple of two tensors representing the minimum and maximum values along each dimension.
+        """
         return torch.min(self.v, dim=0).values, torch.max(self.v, dim=0).values
 
     # unit size
     @torch.no_grad()
     def auto_size(self):
+        """Rescale the data to fit within a specified range.
+
+        The rescaling is performed by calculating the minimum and maximum values of the data, and then transforming the data so that the minimum value maps to -0.6 and the maximum value maps to 0.6.
+        """
         vmin, vmax = self.aabb()
         self.ori_center = (vmax + vmin) / 2
         self.ori_scale = 1.2 / torch.max(vmax - vmin).item()
         self.v = (self.v - self.ori_center) * self.ori_scale
 
     def auto_normal(self):
+        """Calculate the vertex normals of a mesh.
+
+        The vertex normals are calculated by first calculating the face normals of each triangle in the mesh, and then averaging the face normals for each vertex. The resulting vertex normals are then normalized.
+        """
         i0, i1, i2 = self.f[:, 0].long(), self.f[:, 1].long(), self.f[:, 2].long()
         v0, v1, v2 = self.v[i0, :], self.v[i1, :], self.v[i2, :]
 
@@ -413,6 +481,17 @@ class Mesh:
             self.fn = self.ft
 
     def to(self, device):
+        """
+        Transfer the mesh data to the specified device.
+
+        This method is used to transfer the vertex, face, normal, texture, and albedo data to a specified device.
+
+        Parameters:
+            device: The device to transfer the data to.
+
+        Returns:
+            self
+        """
         self.device = device
         for name in ["v", "f", "vn", "fn", "vt", "ft", "albedo"]:
             tensor = getattr(self, name)
@@ -432,7 +511,6 @@ class Mesh:
     
     # write to ply file (only geom)
     def write_ply(self, path):
-
         v_np = self.v.detach().cpu().numpy()
         f_np = self.f.detach().cpu().numpy()
 
@@ -574,7 +652,6 @@ class Mesh:
 
     # write to obj file (geom + texture)
     def write_obj(self, path):
-
         mtl_path = path.replace(".obj", ".mtl")
         albedo_path = path.replace(".obj", "_albedo.png")
 
