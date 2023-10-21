@@ -4,6 +4,7 @@ This repository contains the official implementation for [DreamGaussian: Generat
 
 ### [Project Page](https://dreamgaussian.github.io) | [Arxiv](https://arxiv.org/abs/2309.16653)
 
+A novel 3D content generation framework that achieves both efficiency and quality simultaneously. Our key insight is to design a generative 3D Gaussian Splatting model with companioned mesh extraction and texture refinement in UV space.
 
 https://github.com/dreamgaussian/dreamgaussian/assets/25863658/db860801-7b9c-4b30-9eb9-87330175f5c8
 
@@ -39,7 +40,11 @@ Tested on:
 * Ubuntu 22 with torch 1.12 & CUDA 11.6 on a V100.
 * Windows 10 with torch 2.1 & CUDA 12.1 on a 3070.
 
+## Dependencies
+//Include dependencies and information needed to conduct project
+  
 ## Usage
+
 
 Image-to-3D:
 ```bash
@@ -139,6 +144,8 @@ This work is built on many amazing research works and open-source projects, than
 * [threestudio](https://github.com/threestudio-project/threestudio)
 * [nvdiffrast](https://github.com/NVlabs/nvdiffrast)
 * [dearpygui](https://github.com/hoffstadt/DearPyGui)
+## Licensing
+//Include licensing information here
 
 ## Citation
 
