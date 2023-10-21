@@ -19,26 +19,25 @@ save_path: ???
 
 ### Training
 # guidance loss weights (0 to disable)
-lambda_sd: 0
-mvdream: False
-lambda_zero123: 1
+lambda_sd: 1
+mvdream: True
+lambda_zero123: 0
 # training batch size per iter
 batch_size: 1
 # training iterations for stage 1
-iters: 500
+iters: 300
 # training iterations for stage 2
-iters_refine: 50
+iters_refine: 30
 # training camera radius
-radius: 2
+radius: 2.5
 # training camera fovy
-fovy: 49.1 # align with zero123 rendering setting (ref: https://github.com/cvlab-columbia/zero123/blob/main/objaverse-rendering/scripts/blender_script.py#L61
+fovy: 49.1
 # checkpoint to load for stage 1 (should be a ply file)
 load:
 # whether allow geom training in stage 2
 train_geo: False
 # prob to invert background color during training (0 = always black, 1 = always white)
 invert_bg_prob: 0.5
-
 
 ### GUI
 gui: False
@@ -53,17 +52,17 @@ sh_degree: 0
 position_lr_init: 0.001
 position_lr_final: 0.00002
 position_lr_delay_mult: 0.02
-position_lr_max_steps: 500
+position_lr_max_steps: 300
 feature_lr: 0.01
 opacity_lr: 0.05
 scaling_lr: 0.005
 rotation_lr: 0.005
 percent_dense: 0.1
-density_start_iter: 100
+density_start_iter: 0
 density_end_iter: 3000
-densification_interval: 100
+densification_interval: 30
 opacity_reset_interval: 700
-densify_grad_threshold: 0.5
+densify_grad_threshold: 0.01
 
 ### Textured Mesh
 geom_lr: 0.0001

@@ -559,7 +559,8 @@ class GaussianModel:
         padded_grad[:grads.shape[0]] = grads.squeeze()
         selected_pts_mask = torch.where(padded_grad >= grad_threshold, True, False)
         selected_pts_mask = torch.logical_and(selected_pts_mask,
-                                              torch.max(self.get_scaling, dim=1).values > self.percent_dense*scene_extent)
+            torch.max(self.get_scaling, dim=1).values > self.percent_dense*scene_extent
+        )
 
         stds = self.get_scaling[selected_pts_mask].repeat(N,1)
         means =torch.zeros((stds.size(0), 3),device="cuda")
@@ -581,7 +582,8 @@ class GaussianModel:
         # Extract points that satisfy the gradient condition
         selected_pts_mask = torch.where(torch.norm(grads, dim=-1) >= grad_threshold, True, False)
         selected_pts_mask = torch.logical_and(selected_pts_mask,
-                                              torch.max(self.get_scaling, dim=1).values <= self.percent_dense*scene_extent)
+            torch.max(self.get_scaling, dim=1).values <= self.percent_dense*scene_extent
+        )
         
         new_xyz = self._xyz[selected_pts_mask]
         new_features_dc = self._features_dc[selected_pts_mask]
@@ -716,7 +718,7 @@ class Renderer:
         self,
         viewpoint_camera,
         scaling_modifier=1.0,
-        invert_bg_color=False,
+        bg_color=None,
         override_color=None,
         compute_cov3D_python=False,
         convert_SHs_python=False,
@@ -745,7 +747,7 @@ class Renderer:
             image_width=int(viewpoint_camera.image_width),
             tanfovx=tanfovx,
             tanfovy=tanfovy,
-            bg=self.bg_color if not invert_bg_color else 1 - self.bg_color,
+            bg=self.bg_color if bg_color is None else bg_color,
             scale_modifier=scaling_modifier,
             viewmatrix=viewpoint_camera.world_view_transform,
             projmatrix=viewpoint_camera.full_proj_transform,

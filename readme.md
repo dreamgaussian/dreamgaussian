@@ -7,6 +7,9 @@ This repository contains the official implementation for [DreamGaussian: Generat
 
 https://github.com/dreamgaussian/dreamgaussian/assets/25863658/db860801-7b9c-4b30-9eb9-87330175f5c8
 
+### News
+* 2023.10.21: add experimental support for [MVDream](https://github.com/bytedance/MVDream).
+
 ### [Colab demo](https://github.com/camenduru/dreamgaussian-colab)
 * Image-to-3D: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1sLpYmmLS209-e5eHgcuqdryFRRO6ZhFS?usp=sharing)
 * Text-to-3D: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/camenduru/dreamgaussian-colab/blob/main/dreamgaussian_colab.ipynb)
@@ -100,6 +103,16 @@ python main.py --config configs/text.yaml prompt="a photo of an icecream" save_p
 python main2.py --config configs/text.yaml prompt="a photo of an icecream" save_path=icecream
 ```
 Please check `./configs/text.yaml` for more options.
+
+Text-to-3D (MVDream):
+```bash
+### training gaussian stage
+python main.py --config configs/text_mv.yaml prompt="a plush toy of a corgi nurse" save_path=corgi_nurse
+
+### training mesh stage
+python main2.py --config configs/text_mv.yaml prompt="a plush toy of a corgi nurse" save_path=corgi_nurse
+```
+Please check `./configs/text_mv.yaml` for more options.
 
 Helper scripts:
 ```bash

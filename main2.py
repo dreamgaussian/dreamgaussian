@@ -111,10 +111,16 @@ class GUI:
 
         # lazy load guidance model
         if self.guidance_sd is None and self.enable_sd:
-            print(f"[INFO] loading SD...")
-            from guidance.sd_utils import StableDiffusion
-            self.guidance_sd = StableDiffusion(self.device)
-            print(f"[INFO] loaded SD!")
+            if self.opt.mvdream:
+                print(f"[INFO] loading MVDream...")
+                from guidance.mvdream_utils import MVDream
+                self.guidance_sd = MVDream(self.device)
+                print(f"[INFO] loaded MVDream!")
+            else:
+                print(f"[INFO] loading SD...")
+                from guidance.sd_utils import StableDiffusion
+                self.guidance_sd = StableDiffusion(self.device)
+                print(f"[INFO] loaded SD!")
 
         if self.guidance_zero123 is None and self.enable_zero123:
             print(f"[INFO] loading zero123...")
@@ -125,14 +131,10 @@ class GUI:
         # input image
         if self.input_img is not None:
             self.input_img_torch = torch.from_numpy(self.input_img).permute(2, 0, 1).unsqueeze(0).to(self.device)
-            self.input_img_torch = F.interpolate(
-                self.input_img_torch, (self.opt.ref_size, self.opt.ref_size), mode="bilinear", align_corners=False
-            )
+            self.input_img_torch = F.interpolate(self.input_img_torch, (self.opt.ref_size, self.opt.ref_size), mode="bilinear", align_corners=False)
 
             self.input_mask_torch = torch.from_numpy(self.input_mask).permute(2, 0, 1).unsqueeze(0).to(self.device)
-            self.input_mask_torch = F.interpolate(
-                self.input_mask_torch, (self.opt.ref_size, self.opt.ref_size), mode="bilinear", align_corners=False
-            )
+            self.input_mask_torch = F.interpolate(self.input_mask_torch, (self.opt.ref_size, self.opt.ref_size), mode="bilinear", align_corners=False)
             self.input_img_torch_channel_last = self.input_img_torch[0].permute(1,2,0).contiguous()
 
         # prepare embeddings
@@ -171,6 +173,7 @@ class GUI:
             ### novel view (manual batch)
             render_resolution = 512
             images = []
+            poses = []
             vers, hors, radii = [], [], []
             # avoid too large elevation (> 80 or < -80), and make sure it always cover [-30, 30]
             min_ver = max(min(-30, -30 - self.opt.elevation), -80 - self.opt.elevation)
@@ -187,6 +190,7 @@ class GUI:
                 radii.append(radius)
 
                 pose = orbit_camera(self.opt.elevation + ver, hor, self.opt.radius + radius)
+                poses.append(pose)
 
                 # random render resolution
                 ssaa = min(2.0, max(0.125, 2 * np.random.random()))
@@ -196,24 +200,42 @@ class GUI:
                 image = image.permute(2,0,1).contiguous().unsqueeze(0) # [1, 3, H, W] in [0, 1]
 
                 images.append(image)
-            
+
+                # enable mvdream training
+                if self.opt.mvdream:
+                    for view_i in range(1, 4):
+                        pose_i = orbit_camera(self.opt.elevation + ver, hor + 90 * view_i, self.opt.radius + radius)
+                        poses.append(pose_i)
+
+                        out_i = self.renderer.render(pose_i, self.cam.perspective, render_resolution, render_resolution, ssaa=ssaa)
+
+                        image = out_i["image"].permute(2,0,1).contiguous().unsqueeze(0) # [1, 3, H, W] in [0, 1]
+                        images.append(image)
+
             images = torch.cat(images, dim=0)
+            poses = torch.from_numpy(np.stack(poses, axis=0)).to(self.device)
 
             # import kiui
             # kiui.lo(hor, ver)
             # kiui.vis.plot_image(image)
 
             # guidance loss
+            strength = step_ratio * 0.45 + 0.5 # from 0.5 to 0.95
             if self.enable_sd:
-
-                # loss = loss + self.opt.lambda_sd * self.guidance_sd.train_step(images, step_ratio)
-                refined_images = self.guidance_sd.refine(images, strength=0.6).float()
-                refined_images = F.interpolate(refined_images, (render_resolution, render_resolution), mode="bilinear", align_corners=False)
-                loss = loss + self.opt.lambda_sd * F.mse_loss(images, refined_images)
+                if self.opt.mvdream:
+                    # loss = loss + self.opt.lambda_sd * self.guidance_sd.train_step(images, poses, step_ratio)
+                    refined_images = self.guidance_sd.refine(images, poses, strength=strength).float()
+                    refined_images = F.interpolate(refined_images, (render_resolution, render_resolution), mode="bilinear", align_corners=False)
+                    loss = loss + self.opt.lambda_sd * F.mse_loss(images, refined_images)
+                else:
+                    # loss = loss + self.opt.lambda_sd * self.guidance_sd.train_step(images, step_ratio)
+                    refined_images = self.guidance_sd.refine(images, strength=strength).float()
+                    refined_images = F.interpolate(refined_images, (render_resolution, render_resolution), mode="bilinear", align_corners=False)
+                    loss = loss + self.opt.lambda_sd * F.mse_loss(images, refined_images)
 
             if self.enable_zero123:
                 # loss = loss + self.opt.lambda_zero123 * self.guidance_zero123.train_step(images, vers, hors, radii, step_ratio)
-                refined_images = self.guidance_zero123.refine(images, vers, hors, radii, strength=0.6).float()
+                refined_images = self.guidance_zero123.refine(images, vers, hors, radii, strength=strength).float()
                 refined_images = F.interpolate(refined_images, (render_resolution, render_resolution), mode="bilinear", align_corners=False)
                 loss = loss + self.opt.lambda_zero123 * F.mse_loss(images, refined_images)
                 # loss = loss + self.opt.lambda_zero123 * self.lpips_loss(images, refined_images)

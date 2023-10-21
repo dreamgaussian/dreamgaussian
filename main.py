@@ -128,10 +128,16 @@ class GUI:
 
         # lazy load guidance model
         if self.guidance_sd is None and self.enable_sd:
-            print(f"[INFO] loading SD...")
-            from guidance.sd_utils import StableDiffusion
-            self.guidance_sd = StableDiffusion(self.device)
-            print(f"[INFO] loaded SD!")
+            if self.opt.mvdream:
+                print(f"[INFO] loading MVDream...")
+                from guidance.mvdream_utils import MVDream
+                self.guidance_sd = MVDream(self.device)
+                print(f"[INFO] loaded MVDream!")
+            else:
+                print(f"[INFO] loading SD...")
+                from guidance.sd_utils import StableDiffusion
+                self.guidance_sd = StableDiffusion(self.device)
+                print(f"[INFO] loaded SD!")
 
         if self.guidance_zero123 is None and self.enable_zero123:
             print(f"[INFO] loading zero123...")
@@ -187,10 +193,12 @@ class GUI:
             ### novel view (manual batch)
             render_resolution = 128 if step_ratio < 0.3 else (256 if step_ratio < 0.6 else 512)
             images = []
+            poses = []
             vers, hors, radii = [], [], []
             # avoid too large elevation (> 80 or < -80), and make sure it always cover [-30, 30]
             min_ver = max(min(-30, -30 - self.opt.elevation), -80 - self.opt.elevation)
             max_ver = min(max(30, 30 - self.opt.elevation), 80 - self.opt.elevation)
+
             for _ in range(self.opt.batch_size):
 
                 # render random view
@@ -203,32 +211,43 @@ class GUI:
                 radii.append(radius)
 
                 pose = orbit_camera(self.opt.elevation + ver, hor, self.opt.radius + radius)
+                poses.append(pose)
 
-                cur_cam = MiniCam(
-                    pose,
-                    render_resolution,
-                    render_resolution,
-                    self.cam.fovy,
-                    self.cam.fovx,
-                    self.cam.near,
-                    self.cam.far,
-                )
+                cur_cam = MiniCam(pose, render_resolution, render_resolution, self.cam.fovy, self.cam.fovx, self.cam.near, self.cam.far)
 
-                invert_bg_color = np.random.rand() > self.opt.invert_bg_prob
-                out = self.renderer.render(cur_cam, invert_bg_color=invert_bg_color)
+                bg_color = torch.tensor([1, 1, 1] if np.random.rand() > self.opt.invert_bg_prob else [0, 0, 0], dtype=torch.float32, device="cuda")
+                out = self.renderer.render(cur_cam, bg_color=bg_color)
 
-                image = out["image"].unsqueeze(0)# [1, 3, H, W] in [0, 1]
+                image = out["image"].unsqueeze(0) # [1, 3, H, W] in [0, 1]
                 images.append(image)
-            
+
+                # enable mvdream training
+                if self.opt.mvdream:
+                    for view_i in range(1, 4):
+                        pose_i = orbit_camera(self.opt.elevation + ver, hor + 90 * view_i, self.opt.radius + radius)
+                        poses.append(pose_i)
+
+                        cur_cam_i = MiniCam(pose_i, render_resolution, render_resolution, self.cam.fovy, self.cam.fovx, self.cam.near, self.cam.far)
+
+                        # bg_color = torch.tensor([0.5, 0.5, 0.5], dtype=torch.float32, device="cuda")
+                        out_i = self.renderer.render(cur_cam_i, bg_color=bg_color)
+
+                        image = out_i["image"].unsqueeze(0) # [1, 3, H, W] in [0, 1]
+                        images.append(image)
+
             images = torch.cat(images, dim=0)
+            poses = torch.from_numpy(np.stack(poses, axis=0)).to(self.device)
 
             # import kiui
-            # kiui.lo(hor, ver)
-            # kiui.vis.plot_image(image)
+            # print(hor, ver)
+            # kiui.vis.plot_image(images)
 
             # guidance loss
             if self.enable_sd:
-                loss = loss + self.opt.lambda_sd * self.guidance_sd.train_step(images, step_ratio)
+                if self.opt.mvdream:
+                    loss = loss + self.opt.lambda_sd * self.guidance_sd.train_step(images, poses, step_ratio)
+                else:
+                    loss = loss + self.opt.lambda_sd * self.guidance_sd.train_step(images, step_ratio)
 
             if self.enable_zero123:
                 loss = loss + self.opt.lambda_zero123 * self.guidance_zero123.train_step(images, vers, hors, radii, step_ratio)
