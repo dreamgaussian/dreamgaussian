@@ -10,6 +10,7 @@ opencv-python
 imageio
 imageio-ffmpeg
 omegaconf
+wheel
 
 torch
 einops
