@@ -21,7 +21,7 @@ dearpygui
 
 # for stable-diffusion
 huggingface_hub
-diffusers >= 0.9.0
+diffusers == 0.21.4 # fix loading zero123 temporarily
 accelerate
 transformers
 
