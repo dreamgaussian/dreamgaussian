@@ -10,7 +10,7 @@ def run_main(inputImagePath, outputDirName, imageSize):
     img_path = inputImagePath.parent / (inputImagePath.stem + "_rgba.png")
     print("Processed image path =", img_path)
 
-    process = subprocess.Popen(["python", "process.py", inputImagePath])
+    process = subprocess.Popen(["python", "process.py", inputImagePath, "--size", str(imageSize)])
     process.wait()
     print("--- process.py finished ---")
 
