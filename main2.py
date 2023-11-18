@@ -69,6 +69,8 @@ class GUI:
         # override prompt from cmdline
         if self.opt.prompt is not None:
             self.prompt = self.opt.prompt
+        if self.opt.negative_prompt is not None:
+            self.negative_prompt = self.opt.negative_prompt
         
         if self.gui:
             dpg.create_context()

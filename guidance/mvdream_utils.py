@@ -92,7 +92,7 @@ class MVDream(nn.Module):
         pred_rgb, # [B, C, H, W], B is multiples of 4
         camera, # [B, 4, 4]
         step_ratio=None,
-        guidance_scale=50,
+        guidance_scale=100,
         as_latent=False,
     ):
         
