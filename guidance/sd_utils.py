@@ -85,13 +85,19 @@ class StableDiffusion(nn.Module):
         self.max_step = int(self.num_train_timesteps * t_range[1])
         self.alphas = self.scheduler.alphas_cumprod.to(self.device)  # for convenience
 
-        self.embeddings = None
+        self.embeddings = {}
 
     @torch.no_grad()
     def get_text_embeds(self, prompts, negative_prompts):
         pos_embeds = self.encode_text(prompts)  # [1, 77, 768]
         neg_embeds = self.encode_text(negative_prompts)
-        self.embeddings = torch.cat([neg_embeds, pos_embeds], dim=0)  # [2, 77, 768]
+        self.embeddings['pos'] = pos_embeds
+        self.embeddings['neg'] = neg_embeds
+
+        # directional embeddings
+        for d in ['front', 'side', 'back']:
+            embeds = self.encode_text([f'{p}, {d} view' for p in prompts])
+            self.embeddings[d] = embeds
     
     def encode_text(self, prompt):
         # prompt: [str]
@@ -117,16 +123,17 @@ class StableDiffusion(nn.Module):
         self.scheduler.set_timesteps(steps)
         init_step = int(steps * strength)
         latents = self.scheduler.add_noise(latents, torch.randn_like(latents), self.scheduler.timesteps[init_step])
+        embeddings = torch.cat([self.embeddings['pos'].expand(batch_size, -1, -1), self.embeddings['neg'].expand(batch_size, -1, -1)])
 
         for i, t in enumerate(self.scheduler.timesteps[init_step:]):
     
             latent_model_input = torch.cat([latents] * 2)
 
             noise_pred = self.unet(
-                latent_model_input, t, encoder_hidden_states=self.embeddings,
+                latent_model_input, t, encoder_hidden_states=embeddings,
             ).sample
 
-            noise_pred_uncond, noise_pred_cond = noise_pred.chunk(2)
+            noise_pred_cond, noise_pred_uncond = noise_pred.chunk(2)
             noise_pred = noise_pred_uncond + guidance_scale * (noise_pred_cond - noise_pred_uncond)
             
             latents = self.scheduler.step(noise_pred, t, latents).prev_sample
@@ -140,6 +147,7 @@ class StableDiffusion(nn.Module):
         step_ratio=None,
         guidance_scale=100,
         as_latent=False,
+        vers=None, hors=None,
     ):
         
         batch_size = pred_rgb.shape[0]
@@ -153,19 +161,19 @@ class StableDiffusion(nn.Module):
             # encode image into latents with vae, requires grad!
             latents = self.encode_imgs(pred_rgb_512)
 
-        if step_ratio is not None:
-            # dreamtime-like
-            # t = self.max_step - (self.max_step - self.min_step) * np.sqrt(step_ratio)
-            t = np.round((1 - step_ratio) * self.num_train_timesteps).clip(self.min_step, self.max_step)
-            t = torch.full((batch_size,), t, dtype=torch.long, device=self.device)
-        else:
-            t = torch.randint(self.min_step, self.max_step + 1, (batch_size,), dtype=torch.long, device=self.device)
-
-        # w(t), sigma_t^2
-        w = (1 - self.alphas[t]).view(batch_size, 1, 1, 1)
-
-        # predict the noise residual with unet, NO grad!
         with torch.no_grad():
+            if step_ratio is not None:
+                # dreamtime-like
+                # t = self.max_step - (self.max_step - self.min_step) * np.sqrt(step_ratio)
+                t = np.round((1 - step_ratio) * self.num_train_timesteps).clip(self.min_step, self.max_step)
+                t = torch.full((batch_size,), t, dtype=torch.long, device=self.device)
+            else:
+                t = torch.randint(self.min_step, self.max_step + 1, (batch_size,), dtype=torch.long, device=self.device)
+
+            # w(t), sigma_t^2
+            w = (1 - self.alphas[t]).view(batch_size, 1, 1, 1)
+
+            # predict the noise residual with unet, NO grad!
             # add noise
             noise = torch.randn_like(latents)
             latents_noisy = self.scheduler.add_noise(latents, noise, t)
@@ -173,21 +181,31 @@ class StableDiffusion(nn.Module):
             latent_model_input = torch.cat([latents_noisy] * 2)
             tt = torch.cat([t] * 2)
 
+            if hors is None:
+                embeddings = torch.cat([self.embeddings['pos'].expand(batch_size, -1, -1), self.embeddings['neg'].expand(batch_size, -1, -1)])
+            else:
+                def _get_dir_ind(h):
+                    if abs(h) < 60: return 'front'
+                    elif abs(h) < 120: return 'side'
+                    else: return 'back'
+
+                embeddings = torch.cat([self.embeddings[_get_dir_ind(h)] for h in hors] + [self.embeddings['neg'].expand(batch_size, -1, -1)])
+
             noise_pred = self.unet(
-                latent_model_input, tt, encoder_hidden_states=self.embeddings.repeat(batch_size, 1, 1)
+                latent_model_input, tt, encoder_hidden_states=embeddings
             ).sample
 
             # perform guidance (high scale from paper!)
-            noise_pred_uncond, noise_pred_pos = noise_pred.chunk(2)
+            noise_pred_cond, noise_pred_uncond = noise_pred.chunk(2)
             noise_pred = noise_pred_uncond + guidance_scale * (
-                noise_pred_pos - noise_pred_uncond
+                noise_pred_cond - noise_pred_uncond
             )
 
-        grad = w * (noise_pred - noise)
-        grad = torch.nan_to_num(grad)
+            grad = w * (noise_pred - noise)
+            grad = torch.nan_to_num(grad)
 
-        # seems important to avoid NaN...
-        # grad = grad.clamp(-1, 1)
+            # seems important to avoid NaN...
+            # grad = grad.clamp(-1, 1)
 
         target = (latents - grad).detach()
         loss = 0.5 * F.mse_loss(latents.float(), target, reduction='sum') / latents.shape[0]
@@ -206,7 +224,7 @@ class StableDiffusion(nn.Module):
         if latents is None:
             latents = torch.randn(
                 (
-                    self.embeddings.shape[0] // 2,
+                    1,
                     self.unet.in_channels,
                     height // 8,
                     width // 8,
@@ -214,18 +232,20 @@ class StableDiffusion(nn.Module):
                 device=self.device,
             )
 
+        batch_size = latents.shape[0]
         self.scheduler.set_timesteps(num_inference_steps)
+        embeddings = torch.cat([self.embeddings['pos'].expand(batch_size, -1, -1), self.embeddings['neg'].expand(batch_size, -1, -1)])
 
         for i, t in enumerate(self.scheduler.timesteps):
             # expand the latents if we are doing classifier-free guidance to avoid doing two forward passes.
             latent_model_input = torch.cat([latents] * 2)
             # predict the noise residual
             noise_pred = self.unet(
-                latent_model_input, t, encoder_hidden_states=self.embeddings
+                latent_model_input, t, encoder_hidden_states=embeddings
             ).sample
 
             # perform guidance
-            noise_pred_uncond, noise_pred_cond = noise_pred.chunk(2)
+            noise_pred_cond, noise_pred_uncond = noise_pred.chunk(2)
             noise_pred = noise_pred_uncond + guidance_scale * (
                 noise_pred_cond - noise_pred_uncond
             )

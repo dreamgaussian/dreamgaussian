@@ -69,6 +69,8 @@ class GUI:
         # override prompt from cmdline
         if self.opt.prompt is not None:
             self.prompt = self.opt.prompt
+        if self.opt.negative_prompt is not None:
+            self.negative_prompt = self.opt.negative_prompt
         
         if self.gui:
             dpg.create_context()
@@ -220,7 +222,7 @@ class GUI:
             # kiui.vis.plot_image(image)
 
             # guidance loss
-            strength = step_ratio * 0.45 + 0.5 # from 0.5 to 0.95
+            strength = step_ratio * 0.15 + 0.8
             if self.enable_sd:
                 if self.opt.mvdream:
                     # loss = loss + self.opt.lambda_sd * self.guidance_sd.train_step(images, poses, step_ratio)
