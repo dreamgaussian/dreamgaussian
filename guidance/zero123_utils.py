@@ -26,12 +26,13 @@ class Zero123(nn.Module):
         self.fp16 = fp16
         self.dtype = torch.float16 if fp16 else torch.float32
 
-        self.pipe = Zero123Pipeline.from_pretrained(            
-            # "bennyguo/zero123-diffusers",
-            "bennyguo/zero123-xl-diffusers",
+        assert self.fp16, 'Only zero123 fp16 is supported for now.'
+
+        self.pipe = Zero123Pipeline.from_pretrained(
+            "ashawkey/zero123-xl-diffusers",
             # './model_cache/zero123_xl',
-            variant="fp16_ema" if self.fp16 else None,
             torch_dtype=self.dtype,
+            trust_remote_code=True,
         ).to(self.device)
 
         # for param in self.pipe.parameters():
