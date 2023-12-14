@@ -62,7 +62,7 @@ def decimate_mesh(
         ms.add_mesh(m, "mesh")  # will copy!
 
         # filters
-        # ms.meshing_decimation_clustering(threshold=pml.Percentage(1))
+        # ms.meshing_decimation_clustering(threshold=pml.PercentageValue(1))
         ms.meshing_decimation_quadric_edge_collapse(
             targetfacenum=int(target), optimalplacement=optimalplacement
         )
@@ -70,7 +70,7 @@ def decimate_mesh(
         if remesh:
             # ms.apply_coord_taubin_smoothing()
             ms.meshing_isotropic_explicit_remeshing(
-                iterations=3, targetlen=pml.Percentage(1)
+                iterations=3, targetlen=pml.PercentageValue(1)
             )
 
         # extract mesh
@@ -110,7 +110,7 @@ def clean_mesh(
 
     if v_pct > 0:
         ms.meshing_merge_close_vertices(
-            threshold=pml.Percentage(v_pct)
+            threshold=pml.PercentageValue(v_pct)
         )  # 1/10000 of bounding box diagonal
 
     ms.meshing_remove_duplicate_faces()  # faces defined by the same verts
@@ -118,7 +118,7 @@ def clean_mesh(
 
     if min_d > 0:
         ms.meshing_remove_connected_component_by_diameter(
-            mincomponentdiag=pml.Percentage(min_d)
+            mincomponentdiag=pml.PercentageValue(min_d)
         )
 
     if min_f > 0:
@@ -132,7 +132,7 @@ def clean_mesh(
     if remesh:
         # ms.apply_coord_taubin_smoothing()
         ms.meshing_isotropic_explicit_remeshing(
-            iterations=3, targetlen=pml.AbsoluteValue(remesh_size)
+            iterations=3, targetlen=pml.PureValue(remesh_size)
         )
 
     # extract mesh
