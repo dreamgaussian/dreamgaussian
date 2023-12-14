@@ -19,10 +19,15 @@ mesh_format: obj
 save_path: ???
 
 ### Training
+# use mvdream instead of sd 2.1
+mvdream: False
+# use stable-zero123 instead of zero123-xl
+stable_zero123: False 
 # guidance loss weights (0 to disable)
 lambda_sd: 1
-mvdream: False
 lambda_zero123: 0
+# warmup rgb supervision for image-to-3d
+warmup_rgb_loss: True
 # training batch size per iter
 batch_size: 1
 # training iterations for stage 1

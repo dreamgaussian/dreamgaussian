@@ -8,7 +8,8 @@ https://github.com/dreamgaussian/dreamgaussian/assets/25863658/db860801-7b9c-4b3
 
 ### News
 
-- 2023.10.21: add experimental support for [MVDream](https://github.com/bytedance/MVDream).
+- 2023.12.14: add support for [Stable-Zero123](https://stability.ai/news/stable-zero123-3d-generation), check [image_sai.yaml](./configs/image_sai.yaml).
+- 2023.10.21: add support for [MVDream](https://github.com/bytedance/MVDream), check [text_mv.yaml](./configs/text_mv.yaml).
 
 ### [Colab demo](https://github.com/camenduru/dreamgaussian-colab)
 

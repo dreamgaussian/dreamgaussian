@@ -144,7 +144,10 @@ class GUI:
         if self.guidance_zero123 is None and self.enable_zero123:
             print(f"[INFO] loading zero123...")
             from guidance.zero123_utils import Zero123
-            self.guidance_zero123 = Zero123(self.device)
+            if self.opt.stable_zero123:
+                self.guidance_zero123 = Zero123(self.device, model_key='ashawkey/stable-zero123-diffusers')
+            else:
+                self.guidance_zero123 = Zero123(self.device, model_key='ashawkey/zero123-xl-diffusers')
             print(f"[INFO] loaded zero123!")
 
         # input image
@@ -186,11 +189,11 @@ class GUI:
 
                 # rgb loss
                 image = out["image"].unsqueeze(0) # [1, 3, H, W] in [0, 1]
-                loss = loss + 10000 * step_ratio * F.mse_loss(image, self.input_img_torch)
+                loss = loss + 10000 * (step_ratio if self.opt.warmup_rgb_loss else 1) * F.mse_loss(image, self.input_img_torch)
 
                 # mask loss
                 mask = out["alpha"].unsqueeze(0) # [1, 1, H, W] in [0, 1]
-                loss = loss + 1000 * step_ratio * F.mse_loss(mask, self.input_mask_torch)
+                loss = loss + 1000 * (step_ratio if self.opt.warmup_rgb_loss else 1) * F.mse_loss(mask, self.input_mask_torch)
 
             ### novel view (manual batch)
             render_resolution = 128 if step_ratio < 0.3 else (256 if step_ratio < 0.6 else 512)
