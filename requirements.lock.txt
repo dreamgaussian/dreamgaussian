@@ -31,7 +31,7 @@ trimesh == 4.0.5
 PyMCubes == 0.1.2
 pymeshlab == 2023.12
 
-rembg == 2.0.49
+rembg[gpu,cli] == 2.0.49
 
 # gradio demo
 gradio == 4.8.0
