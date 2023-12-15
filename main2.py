@@ -239,7 +239,7 @@ class GUI:
 
             if self.enable_zero123:
                 # loss = loss + self.opt.lambda_zero123 * self.guidance_zero123.train_step(images, vers, hors, radii, step_ratio)
-                refined_images = self.guidance_zero123.refine(images, vers, hors, radii, strength=strength).float()
+                refined_images = self.guidance_zero123.refine(images, vers, hors, radii, strength=strength, default_elevation=self.opt.elevation).float()
                 refined_images = F.interpolate(refined_images, (render_resolution, render_resolution), mode="bilinear", align_corners=False)
                 loss = loss + self.opt.lambda_zero123 * F.mse_loss(images, refined_images)
                 # loss = loss + self.opt.lambda_zero123 * self.lpips_loss(images, refined_images)

@@ -91,19 +91,30 @@ python main2.py --config configs/image.yaml input=data/name_rgba.png save_path=n
 
 ### visualization
 # gui for visualizing mesh
-python -m kiui.render logs/name.obj
+# `kire` is short for `python -m kiui.render`
+kire logs/name.obj
 
 # save 360 degree video of mesh (can run without gui)
-python -m kiui.render logs/name.obj --save_video name.mp4 --wogui
+kire logs/name.obj --save_video name.mp4 --wogui
 
 # save 8 view images of mesh (can run without gui)
-python -m kiui.render logs/name.obj --save images/name/ --wogui
+kire logs/name.obj --save images/name/ --wogui
 
 ### evaluation of CLIP-similarity
 python -m kiui.cli.clip_sim data/name_rgba.png logs/name.obj
 ```
 
 Please check `./configs/image.yaml` for more options.
+
+Image-to-3D (stable-zero123):
+
+```bash
+### training gaussian stage
+python main.py --config configs/image_sai.yaml input=data/name_rgba.png save_path=name
+
+### training mesh stage
+python main2.py --config configs/image_sai.yaml input=data/name_rgba.png save_path=name
+```
 
 Text-to-3D:
 
@@ -146,6 +157,32 @@ Gradio Demo:
 
 ```bash
 python gradio_app.py
+```
+
+## Tips
+* The world & camera coordinate system is the same as OpenGL:
+```
+    World            Camera        
+  
+     +y              up  target                                              
+     |               |  /                                            
+     |               | /                                                
+     |______+x       |/______right                                      
+    /                /         
+   /                /          
+  /                /           
+ +z               forward           
+
+elevation: in (-90, 90), from +y to -y is (-90, 90)
+azimuth: in (-180, 180), from +z to +x is (0, 90)
+```
+
+* Trouble shooting OpenGL errors (e.g., `[F glutil.cpp:338] eglInitialize() failed`): 
+```bash
+# either try to install OpenGL correctly (usually installed with the Nvidia driver), or use force_cuda_rast:
+python main.py --config configs/image_sai.yaml input=data/name_rgba.png save_path=name force_cuda_rast=True
+
+kire mesh.obj --force_cuda_rast
 ```
 
 ## Acknowledgement
