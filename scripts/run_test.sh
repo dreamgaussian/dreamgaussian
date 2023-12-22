@@ -14,3 +14,8 @@ python -m kiui.render logs/icecream.obj --save_video videos/icecream.mp4 --wogui
 python main.py --config configs/text_mv.yaml prompt="a DSLR photo of a corgi" save_path=corgi
 python main2.py --config configs/text_mv.yaml prompt="a DSLR photo of a corgi" save_path=corgi
 python -m kiui.render logs/corgi.obj --save_video videos/corgi.mp4 --wogui
+
+#image+text-to-3d (imagedream)
+python main.py --config configs/imagedream.yaml input=data/ghost_rgba.png prompt="a ghost eating hamburger" save_path=ghost
+python main2.py --config configs/imagedream.yaml input=data/ghost_rgba.png prompt="a ghost eating hamburger" save_path=ghost
+python -m kiui.render logs/ghost.obj --save_video videos/ghost.mp4 --wogui

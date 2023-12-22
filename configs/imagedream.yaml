@@ -20,9 +20,9 @@ save_path: ???
 
 ### Training
 # use mvdream instead of sd 2.1
-mvdream: True
+mvdream: False
 # use imagedream
-imagedream: False
+imagedream: True
 # use stable-zero123 instead of zero123-xl
 stable_zero123: False 
 # guidance loss weights (0 to disable)
@@ -43,9 +43,9 @@ radius: 2.5
 # training camera fovy
 fovy: 49.1
 # training camera min elevation
-min_ver: -30
+min_ver: -5
 # training camera max elevation
-max_ver: 30
+max_ver: 0
 # checkpoint to load for stage 1 (should be a ply file)
 load:
 # whether allow geom training in stage 2
@@ -72,7 +72,7 @@ opacity_lr: 0.05
 scaling_lr: 0.005
 rotation_lr: 0.005
 percent_dense: 0.01
-density_start_iter: 0
+density_start_iter: 50
 density_end_iter: 3000
 densification_interval: 50
 opacity_reset_interval: 700

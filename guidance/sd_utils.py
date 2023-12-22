@@ -1,15 +1,9 @@
-from transformers import CLIPTextModel, CLIPTokenizer, logging
 from diffusers import (
-    AutoencoderKL,
-    UNet2DConditionModel,
-    PNDMScheduler,
     DDIMScheduler,
     StableDiffusionPipeline,
 )
 from diffusers.utils.import_utils import is_xformers_available
 
-# suppress partial model loading warning
-logging.set_verbosity_error()
 
 import numpy as np
 import torch

@@ -8,6 +8,7 @@ https://github.com/dreamgaussian/dreamgaussian/assets/25863658/db860801-7b9c-4b3
 
 ### News
 
+- 2023.12.22: add experimental support for [ImageDream](https://github.com/bytedance/ImageDream), check [imagedream.yaml](./configs/image_sai.yaml).
 - 2023.12.14: add support for [Stable-Zero123](https://stability.ai/news/stable-zero123-3d-generation), check [image_sai.yaml](./configs/image_sai.yaml).
 - 2023.10.21: add support for [MVDream](https://github.com/bytedance/MVDream), check [text_mv.yaml](./configs/text_mv.yaml).
 
@@ -41,6 +42,9 @@ pip install git+https://github.com/ashawkey/kiuikit
 
 # To use MVdream, also install:
 pip install git+https://github.com/bytedance/MVDream
+
+# To use ImageDream, also install:
+pip install git+https://github.com/bytedance/ImageDream/#subdirectory=extern/ImageDream
 ```
 
 Tested on:
@@ -139,6 +143,16 @@ python main2.py --config configs/text_mv.yaml prompt="a plush toy of a corgi nur
 ```
 
 Please check `./configs/text_mv.yaml` for more options.
+
+Image+Text-to-3D (ImageDream):
+
+```bash
+### training gaussian stage
+python main.py --config configs/imagedream.yaml input=data/ghost_rgba.png prompt="a ghost eating hamburger" save_path=ghost
+
+### training mesh stage
+python main2.py --config configs/imagedream.yaml input=data/ghost_rgba.png prompt="a ghost eating hamburger" save_path=ghost
+```
 
 Helper scripts:
 

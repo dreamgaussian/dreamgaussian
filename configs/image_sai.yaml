@@ -21,6 +21,8 @@ save_path: ???
 ### Training
 # use mvdream instead of sd 2.1
 mvdream: False
+# use imagedream
+imagedream: False
 # use stable-zero123 instead of zero123-xl
 stable_zero123: True 
 # guidance loss weights (0 to disable)
@@ -40,6 +42,10 @@ iters_refine: 50
 radius: 2
 # training camera fovy
 fovy: 49.1 # align with zero123 rendering setting (ref: https://github.com/cvlab-columbia/zero123/blob/main/objaverse-rendering/scripts/blender_script.py#L61
+# training camera min elevation
+min_ver: -30
+# training camera max elevation
+max_ver: 30
 # checkpoint to load for stage 1 (should be a ply file)
 load:
 # whether allow geom training in stage 2
