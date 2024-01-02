@@ -23,7 +23,7 @@ dearpygui == 1.10.1
 huggingface_hub == 0.19.4
 diffusers == 0.24.0
 accelerate == 0.24.1
-transformers == 4.35.2
+transformers == 4.36.2
 
 # for dmtet and mesh export
 xatlas == 0.0.6

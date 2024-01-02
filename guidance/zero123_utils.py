@@ -101,7 +101,7 @@ class Zero123(nn.Module):
         for i, t in enumerate(self.scheduler.timesteps[init_step:]):
             
             x_in = torch.cat([latents] * 2)
-            t_in = torch.cat([t.view(1)] * 2).to(self.device)
+            t_in = t.view(1).to(self.device)
 
             noise_pred = self.unet(
                 torch.cat([x_in, vae_emb], dim=1),
